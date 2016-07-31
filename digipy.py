@@ -13,12 +13,12 @@ class DigiPy:
     class Parts:
         def __init__(self):
             self.parts = []
-            self.catalog = {'SMDResistors': 'resistors/chip-resistor-surface-mount/65769',
-                            'THResistors': 'resistors/through-hole-resistors/66690',
-                            'CeramicCapacitors': 'capacitors/ceramic-capacitors/131083'}
-            self.translateGuide = {1: 'SMDResistors',
-                                   2: 'THResistors',
-                                   3: 'CeramicCapacitors'}
+            self.catalog = {'SMDResistor': 'resistors/chip-resistor-surface-mount/65769',
+                            'THResistor': 'resistors/through-hole-resistors/66690',
+                            'CeramicCapacitor': 'capacitors/ceramic-capacitors/131083'}
+            self.translateGuide = {1: 'SMDResistor',
+                                   2: 'THResistor',
+                                   3: 'CeramicCapacitor'}
 
         class Part:
             def __init__(self, name):
@@ -51,8 +51,13 @@ class DigiPy:
 
     def update(self, part=None):
         if not self.checkInput([part]):
-            self.listParts()
-            return self.listParts()
+            for i in range(1, len(self.Parts.translateGuide)+1):
+                part = d.translate(i)
+                d.update(part)
+        else:
+            self.download(part)
+
+    def download(self, part):
         self.Parts.parts.append(self.Parts.Part(part))
         Part = self.Parts.parts[-1]
         r = requests.get('http://www.digikey.com/product-search/en/' + self.Parts.catalog[part] + '?pageSize=1')
@@ -120,7 +125,13 @@ class DigiPy:
                     options[i + 1] = filter.list[i]
         return options
 
-    def getPart(self, partType, filterOptions, quantity=1, cheapest=False):
+    def getPart(self, partType=None, filterOptions=None, quantity=1, cheapest=False):
+        if(type(partType)==tuple):
+            cheapest = partType[3]
+            quantity = partType[2]
+            filterOptions = partType[1]
+            partType = partType[0]
+        print partType
         Part = self.getPartInstance(partType)
         for filter in Part.Filters:
             for inputFilter in filterOptions:
@@ -135,10 +146,10 @@ class DigiPy:
                                 r = requests.get(url)
                                 s = BeautifulSoup(r.content, 'html.parser')
                                 partPN = s.find_all("td", class_="tr-dkPartNumber")[0].find("a").string
-                                if "CeramicCapacitors" == partType:
+                                if "CeramicCapacitor" == partType:
                                     partValue = s.find_all("td", class_="13")[0].get_text().replace('\n', '').replace(
                                         ' ', '').replace('µ', 'u')
-                                elif ("SMDResistors" == partType) or ("THResistors" == partType):
+                                elif ("SMDResistor" == partType) or ("THResistor" == partType):
                                     partValue = s.find_all("td", class_="1")[0].get_text().replace('\n', '').replace(
                                         ' ', '').replace('±', '+/-')
                                 partPackage = s.find_all("td", class_="16")[0].get_text().replace('\n', '').replace(
@@ -191,23 +202,21 @@ class DigiPy:
         self.author = "Michael Uttmark"
         self.Parts = self.Parts()
 
+
 d = DigiPy()
-for i in range(1, 4):
-    part = d.translate(i)
-    d.update(part)
+d.update()
 
 parts = [
-    (d.translate(1), {"Resistance (Ohms)": ["1k"], d.tC(d.translate(1), 11): "0603 (1608 Metric)"}, 2, True),
-    (d.translate(1), {"Resistance (Ohms)": ["5k"], d.tC(d.translate(1), 11): "0603 (1608 Metric)"}, 8, True),
-    (d.translate(1), {"Resistance (Ohms)": ["2.2k"], d.tC(d.translate(1), 11): "0603 (1608 Metric)"}, 1, True),
-    (d.translate(2), {"Resistance (Ohms)": ["500"]}, 10, True),
-    (d.translate(3), {"Capacitance": ["1pF"], "Package / Case": "0603 (1608 Metric)"}, 47, True),
-    (d.translate(3), {"Capacitance": ["10uF"], "Package / Case": "0603 (1608 Metric)"}, 123, True)
+    ("SMDResistor", {"Resistance (Ohms)": ["1k"], d.tC(d.translate(1), 11): "0603 (1608 Metric)"}, 2, True),
+    ("SMDResistor", {"Resistance (Ohms)": ["5k"], d.tC(d.translate(1), 11): "0603 (1608 Metric)"}, 8, True),
+    ("SMDResistor", {"Resistance (Ohms)": ["2.2k"], d.tC(d.translate(1), 11): "0603 (1608 Metric)"}, 1, True),
+    ("THResistor", {"Resistance (Ohms)": ["500"]}, 10, True),
+    ("CeramicCapacitor", {"Capacitance": ["1pF"], "Package / Case": "0603 (1608 Metric)"}, 47, True),
+    ("CeramicCapacitor", {"Capacitance": ["10uF"], "Package / Case": "0603 (1608 Metric)"}, 123, True)
 ]
 
 d.openCSV()
 for part in parts:
-    p = d.getPart(part[0], part[1], part[2], part[3])
+    p = d.getPart(part)
     d.writeToCSV(p)
 d.closeCSV()
-os.system('cat BOM.csv')
