@@ -78,4 +78,4 @@ In the future, this might be automated, but you're stuck with your own wits for 
 This was made to solve a specific problem. Please don't expect much more development.
 Moreover, don't treat this as good code, as it's at least 10% hotfix. :collision:
 
-<center>:rocket:</center>
+<div style="text-align:center;width:100%">:rocket:</div>
