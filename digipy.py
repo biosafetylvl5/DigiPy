@@ -84,7 +84,6 @@ class DigiPy:
         for part in self.Parts.parts:
             if part.name == partName:
                 return part
-        print "Updating ..."
         self.update(partName)
         for part in self.Parts.parts:
             if part.name == partName:
@@ -130,19 +129,16 @@ class DigiPy:
             quantity = partType[2]
             filterOptions = partType[1]
             partType = partType[0]
-        print partType
         Part = self.getPartInstance(partType)
         usedFilters = []
         for filter in Part.Filters:
             for inputFilter in filterOptions:
                 if filter.header == inputFilter: #Find matching filters
-                    print filter.header
                     for i in range(0, len(filter.list)):
                         if filter.list[i] == filterOptions[filter.header]:
                             usedFilters.append([filter.key, filter.options[filter.list[i]]])
                         else:
                             for option in filterOptions[filter.header]:
-                                print option
                                 if filter.list[i] == option:
                                     usedFilters.append([filter.key, filter.options[filter.list[i]]])
         urlFilter = ""
@@ -150,12 +146,10 @@ class DigiPy:
             if not urlFilter == "":
                 urlFilter += "&"
             urlFilter += filter[0] + "=" + filter[1]
-        print urlFilter
         url = "http://www.digikey.com/product-search/en/" + self.Parts.catalog[Part.name] + \
               "?" + urlFilter
         if cheapest:
             url += "&ColumnSort=1000011&pageSize=1&quantity=" + str(quantity)
-        print url
         r = requests.get(url)
         s = BeautifulSoup(r.content, 'html.parser')
         partPN = s.find_all("td", class_="tr-dkPartNumber")[0].find("a").string
