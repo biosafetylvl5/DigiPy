@@ -3,10 +3,9 @@ import requests
 from bs4 import BeautifulSoup
 import sys
 import csv
-import os
 
 reload(sys)
-sys.setdefaultencoding('utf-8')  # Not exactly the right way to handle things, but it works.
+sys.setdefaultencoding('utf-8')  # Not exactly the right way to handle things, but it works quite well.
 
 
 class DigiPy:
@@ -52,8 +51,8 @@ class DigiPy:
     def update(self, part=None):
         if not self.checkInput([part]):
             for i in range(1, len(self.Parts.translateGuide)+1):
-                part = d.translate(i)
-                d.update(part)
+                part = self.translate(i)
+                self.update(part)
         else:
             self.download(part)
 
@@ -133,35 +132,49 @@ class DigiPy:
             partType = partType[0]
         print partType
         Part = self.getPartInstance(partType)
+        usedFilters = []
         for filter in Part.Filters:
             for inputFilter in filterOptions:
-                if filter.header == inputFilter:
+                if filter.header == inputFilter: #Find matching filters
+                    print filter.header
                     for i in range(0, len(filter.list)):
-                        for option in filterOptions[filter.header]:
-                            if filter.list[i] == option:
-                                url = "http://www.digikey.com/product-search/en/" + self.Parts.catalog[Part.name] + \
-                                      "?" + filter.key + "=" + filter.options[filter.list[i]]
-                                if cheapest:
-                                    url += "&ColumnSort=1000011&pageSize=1&quantity=" + str(quantity)
-                                r = requests.get(url)
-                                s = BeautifulSoup(r.content, 'html.parser')
-                                partPN = s.find_all("td", class_="tr-dkPartNumber")[0].find("a").string
-                                if "CeramicCapacitor" == partType:
-                                    partValue = s.find_all("td", class_="13")[0].get_text().replace('\n', '').replace(
-                                        ' ', '').replace('µ', 'u')
-                                elif ("SMDResistor" == partType) or ("THResistor" == partType):
-                                    partValue = s.find_all("td", class_="1")[0].get_text().replace('\n', '').replace(
-                                        ' ', '').replace('±', '+/-')
-                                partPackage = s.find_all("td", class_="16")[0].get_text().replace('\n', '').replace(
-                                    '  ',
-                                    '')
-                                partTolerance = s.find_all("td", class_="3")[0].get_text().replace('\n', '').replace(
-                                    '  ', '').replace('µ', 'u').replace('±', '+/-')
-                                price = s.find_all("td", class_="tr-unitPrice")[0].get_text().replace('\n', '').replace(
-                                    ' ', '').replace('@', ' @ ')
+                        if filter.list[i] == filterOptions[filter.header]:
+                            usedFilters.append([filter.key, filter.options[filter.list[i]]])
+                        else:
+                            for option in filterOptions[filter.header]:
+                                print option
+                                if filter.list[i] == option:
+                                    usedFilters.append([filter.key, filter.options[filter.list[i]]])
+        urlFilter = ""
+        for filter in usedFilters:
+            if not urlFilter == "":
+                urlFilter += "&"
+            urlFilter += filter[0] + "=" + filter[1]
+        print urlFilter
+        url = "http://www.digikey.com/product-search/en/" + self.Parts.catalog[Part.name] + \
+              "?" + urlFilter
+        if cheapest:
+            url += "&ColumnSort=1000011&pageSize=1&quantity=" + str(quantity)
+        print url
+        r = requests.get(url)
+        s = BeautifulSoup(r.content, 'html.parser')
+        partPN = s.find_all("td", class_="tr-dkPartNumber")[0].find("a").string
+        if "CeramicCapacitor" == partType:
+            partValue = s.find_all("td", class_="13")[0].get_text().replace('\n', '').replace(
+                ' ', '').replace('µ', 'u')
+        elif ("SMDResistor" == partType) or ("THResistor" == partType):
+            partValue = s.find_all("td", class_="1")[0].get_text().replace('\n', '').replace(
+                ' ', '').replace('±', '+/-')
+        partPackage = s.find_all("td", class_="16")[0].get_text().replace('\n', '').replace(
+            '  ',
+            '')
+        partTolerance = s.find_all("td", class_="3")[0].get_text().replace('\n', '').replace(
+            '  ', '').replace('µ', 'u').replace('±', '+/-')
+        price = s.find_all("td", class_="tr-unitPrice")[0].get_text().replace('\n', '').replace(
+            ' ', '').replace('@', ' @ ')
 
-                                return {"SKU": str(partPN), "Price": str(price), "Value": str(partValue),
-                                        "Package / Case": str(partPackage), "Tolerance": str(partTolerance)}
+        return {"SKU": str(partPN), "Price": str(price), "Value": str(partValue),
+                "Package / Case": str(partPackage), "Tolerance": str(partTolerance)}
 
     def translate(self, number=None):
         if self.checkInput([number]):
@@ -201,22 +214,3 @@ class DigiPy:
         self.version = 0.1
         self.author = "Michael Uttmark"
         self.Parts = self.Parts()
-
-
-d = DigiPy()
-d.update()
-
-parts = [
-    ("SMDResistor", {"Resistance (Ohms)": ["1k"], d.tC(d.translate(1), 11): "0603 (1608 Metric)"}, 2, True),
-    ("SMDResistor", {"Resistance (Ohms)": ["5k"], d.tC(d.translate(1), 11): "0603 (1608 Metric)"}, 8, True),
-    ("SMDResistor", {"Resistance (Ohms)": ["2.2k"], d.tC(d.translate(1), 11): "0603 (1608 Metric)"}, 1, True),
-    ("THResistor", {"Resistance (Ohms)": ["500"]}, 10, True),
-    ("CeramicCapacitor", {"Capacitance": ["1pF"], "Package / Case": "0603 (1608 Metric)"}, 47, True),
-    ("CeramicCapacitor", {"Capacitance": ["10uF"], "Package / Case": "0603 (1608 Metric)"}, 123, True)
-]
-
-d.openCSV()
-for part in parts:
-    p = d.getPart(part)
-    d.writeToCSV(p)
-d.closeCSV()
