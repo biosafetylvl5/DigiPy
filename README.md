@@ -23,10 +23,10 @@ parts = [
 
 # Open CSVFile for writing
 DigiPy.openCSV()
-for part in parts:  # Iterate over our parts, looking each one up
+for part in parts:  # Iterate over our parts, looking each on :e up
     partInformation = DigiPy.getPart(part) # Get part information
     DigiPy.writeToCSV(partInformation)     # Write to CSV file
-d.closeCSV() # Close CSV
+DigiPy.closeCSV() # Close CSV
 ```
 ### Output
 | Part Number        |       Price      |Tolerance |Value | Package            |
